@@ -1,0 +1,90 @@
+from Compiler import instructions_base
+import sys
+from sympy.ntheory import primefactors
+import random 
+import math
+program.set_security(64) #Statistical security parameter.
+
+nparallel = int(sys.argv[2])
+eval_len = int(sys.argv[3])
+order = int(sys.argv[4])
+generator = int(sys.argv[5]) # Get the generator which we will use to comptue the higher order residuals
+
+prime = program.prime
+debug = False
+
+if debug:
+    print_ln("Getting indexes")
+indexes = [public_input() for _ in range(eval_len)]
+if debug:
+    print_ln("Got Indexes")
+
+
+def compute_residual(value, power, generator, prime):
+    """Given some value x, the power and a generator of Z_p finds the power-residual of x in this group. The way this is currently output is by just outputting an array of all the elements, and the power residue is then the index of the element in the array that contains a 1.
+    Since the goal is to check if value/g^i = h^k for some h, we can equivalently check if (value/g^i)^((p-1)/k) = 1
+    """
+    outputs = []
+    for out in range(1,power+1):
+        divisor = pow(generator, -out, prime)
+        outputs.append((value * divisor) ** ((prime-1)//power))
+    return outputs
+
+if prime % order != 1:
+    raise Exception("Invalid prime for this order!")
+
+
+instructions_base.set_global_vector_size(nparallel)
+
+# This reads nparallel keys. But that's just a limitation of this library. If do the read and then set nparallel it'll use an extra round.
+server_key = sint.get_input_from(1)
+
+class LegHigherOrderOPRF(object):
+    def __init__(self, bit_len, indexes):
+        self.prf_bit_len = bit_len
+        self.indexes = indexes
+        self.s_arr = VectorArray(bit_len, sint, nparallel)
+        for i in range(bit_len):
+            s,ssq = sint.get_random_square() 
+            # Sadly this step isn't done as part of the preprocessing/offline phase.
+            base = ssq**(order//2)
+            if order % 2 == 1:
+                base *= s 
+            self.s_arr[i] = base
+
+    def compute_symbols(self, m, k):
+        """ Takes as input [m] (H(x)), [k] returns value masked by s^2 to party 0 (the user)."""
+        prf_out = self.power_prf(m, k)
+        # Reveal the output to party 0 (the user)
+        res = [(prf_out[i]).reveal_to(0)  for i in range(len(prf_out))]
+        return res
+
+    def power_prf(self, msg, k):
+        """ Compute the actual values """
+        output_len = self.prf_bit_len
+        res = [self.s_arr[i] * (k + msg + self.indexes[i]) for i in range(output_len)]
+        return res
+
+
+HigherOrderOPRF = LegHigherOrderOPRF(eval_len, indexes)
+
+#Read user input
+user_input = sint.get_input_from(0)
+
+res = HigherOrderOPRF.compute_symbols(user_input, server_key) 
+
+
+    
+
+for i in range(eval_len):  
+    # Generate the output and write it to a file.
+    results = compute_residual(res[i]._v, order, generator, prime)
+    if debug:
+        print_ln('Next entry:')
+    index = 1
+    for j in results:
+        #This outptus power/order many residuals, from which then the corresponding one can be recovered, by checking which entry is one.
+        if debug:
+            print_ln('Result %s %s', index, j)
+            index += 1
+        j.binary_output() #Output to file

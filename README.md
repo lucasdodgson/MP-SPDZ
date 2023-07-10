@@ -1,3 +1,44 @@
+# Legendre OPRF
+Implementation of the Legendre and Power Residue OPRF using the MP-SPDZ library.
+    
+## Benchmarking:
+To run the benchmarks of the Legendre OPRF, a helper file is provided. Steps to run:
+1. Install requirements for MP-SPDZ (see below -- for Ubuntu: ```sudo apt install automake build-essential clang cmake git libboost-dev libboost-thread-dev libgmp-dev libntl-dev libsodium-dev libssl-dev libtool python3 python3-pip```), then install scipy and sympy python packages `pip3 install scipy sympy`
+2. Run setup `make setup`
+3. Optionally, set network delay and bandwidth limit to reproduce timing results of simulated WAN environment with `sudo tc qdisc add dev lo root netem delay 100ms rate 50mbit`
+4. Run benchmark file with desired arguments (see below), for example `python3 legendre_oprf_benchmark.py 1 128` to run it with 1 parallel evaluations and a 128-bit prime. 
+
+The benchmark script works as follows, it compiles the program and generates the inputs. It then runs it and verifies the outputs, while recording the performance. There are a few ways to modify the way the benchmark script runs. In particukar:
+- Adding a third system argument will cause the variant of the scheme with further preprocessing to be used.
+- Changing the 128 to 256 allows using a 256-bit prime. Currently those two are the only supported options. 
+- Lines 10 and 13 of [the file](./legendre_oprf_benchmark.py) allow specifying if a full benchmark should be run and if only the online-phase should be benchmarked, or the offline phase be included in the results. A full-benchmark will run 100 repetitions of each configuration to get a better timinig estimate, and run through a series of preprocessing batch sizes. 
+- Line [16](./legendre_oprf_benchmark.py) allows specifying alternative MPC protocols, for example Semi or Hemi.   
+
+As an example, to reproduce the results for Mascot presented in the paper, edit the benchmark file by changing the `full_benchmark` variable to True, verify the protocol is set to Mascot and run `python3 legendre_oprf_benchmark.py 10 128`. This will then write the results to a .csv file. To then run the online variants change `online_phase_benchmark` to True and run the same command again. Add an arbitrary third system argument to run the improved variant of the online phase. The same holds for runs in the semi-honest model, just change the protocol from mascot.
+
+--- 
+## Higher-Power Residues
+For the Power-Residue OPRF, the process is very similar. To run the protocol and generate input, one can run `python3 higher_order_oprf_benchmark.py 1 128 a` where `a` describes what power-residue one should use (`2` corresponds to the Legendre OPRF for example). The rest works analogously, now requiring a fourth argument in case further-preprocessing should be used.
+
+## Running all benchmarks
+There is also a provided python script [runall](./runall.py) which will run through all the benchmarks included in the report. We recommend manually reducing the number of performed repetitions in case this is being done as this will otherwise be a very lengthy process.
+
+## Modifications from MP-SPDZ:
+We note that the majority of this repository is based on the MP-SPDZ repository. The only changes being:
+- Update with the above sections of readme
+- Addition of [Benchmarking script](./legendre_oprf_benchmark.py) 
+- Addition of [Legendre OPRF](./Programs/Source/oprf_leg.mpc) and [Legendre OPRF with more preprocessing](./oprf_leg_improved.mpc) program source files.
+- Addition of [runall script](./runall.py) to run entire benchmarking suite.
+Furthermore, the following files have been added for the power residue implementation:
+- Addition of [Higher Order Benchmarking script](./higher_order_oprf_benchmark.py) 
+- Addition of [Higher order OPRF](./Programs/Source/oprf_higher_order_residuals.mpc) and [Higher order OPRF with more preprocessing](./oprf_higher_order_residuals_improved.mpc) program source files.
+
+---
+---
+---
+
+# **README of MP-SPDZ library on which this Repo is based:**
+
 # Multi-Protocol SPDZ [![Documentation Status](https://readthedocs.org/projects/mp-spdz/badge/?version=latest)](https://mp-spdz.readthedocs.io/en/latest/?badge=latest) [![Build Status](https://dev.azure.com/data61/MP-SPDZ/_apis/build/status/data61.MP-SPDZ?branchName=master)](https://dev.azure.com/data61/MP-SPDZ/_build/latest?definitionId=7&branchName=master) [![Gitter](https://badges.gitter.im/MP-SPDZ/community.svg)](https://gitter.im/MP-SPDZ/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 This is a software to benchmark various secure multi-party computation

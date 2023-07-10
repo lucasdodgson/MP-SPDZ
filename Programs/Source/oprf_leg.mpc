@@ -1,0 +1,102 @@
+from Compiler import instructions_base
+import sys
+
+program.set_security(64) #Statistical security parameter.
+
+nparallel = int(sys.argv[2])
+eval_len = int(sys.argv[3])
+
+program.bit_length = 128
+
+debug = False
+
+if debug:
+    print_ln("Getting indexes")
+indexes = [public_input() for _ in range(eval_len)]
+if debug:
+    print_ln("Got Indexes")
+
+
+
+
+instructions_base.set_global_vector_size(nparallel)
+
+
+
+#This reads nparallel keys. But that's just a limitation of this library. If do the read and then set nparallel it'll use an extra round.
+if debug:
+    print_ln("Getting key")
+server_key = sint.get_input_from(1)
+if debug:
+    print_ln("Got key")
+    
+if debug:
+    print_ln("Getting masks")
+revealed_masks = [public_input() for _ in range(eval_len)]
+if debug:
+    print_ln("Got masks")
+
+class LegOPRF(object):
+    def __init__(self, bit_len, indexes):
+        self.prf_bit_len = bit_len
+        self.indexes = indexes
+
+    def compute_symbols(self, m, user_s, user_mask, server_s, k):
+        """ Takes as input [m] (H(x)), [user_s], [server_s], [k] returns c """
+        if len(user_s) != self.prf_bit_len:
+            return []
+        if len(server_s) != self.prf_bit_len:
+            return []
+    
+        #Compute s values 
+        final_s = [user_s[i] + server_s[i] for i in range(self.prf_bit_len)]
+        #Compute prf output 
+        prf_out = self.legendre_prf(m, final_s, k)
+        # Reveal the masked values
+        res = [(prf_out[i] + user_mask[i]).reveal()  for i in range(len(prf_out))]
+        return res
+
+    def legendre_prf(self, msg, s, k):
+        res = [0] * self.prf_bit_len
+        if len(s) != self.prf_bit_len:
+            return []
+        #Compute values
+        for i in range(self.prf_bit_len):
+            s_squared = s[i] * s[i]
+            res[i] = s_squared * (k + msg + self.indexes[i])
+        return res
+
+def print_arr(arr, desc):
+    for i in arr: 
+        print_ln('%s %s', desc, i.reveal())
+
+
+LegOPRF = LegOPRF(eval_len, indexes)
+
+#Read the inputs
+user_input = sint.get_input_from(0)
+user_s_values = [sint.get_input_from(0) for _ in range(eval_len)]
+
+output_masks = [sint.get_input_from(0) for _ in range(eval_len)]
+s_values = [sint.get_input_from(1) for _ in range(eval_len)]
+
+if debug: ##To debug
+    print_ln('Output masks %s %s', revealed_masks[0 + j *eval_len], output_masks[0].reveal())
+    index = (indexes[0])
+    print_ln('User input and Key %s %s', user_input.reveal(), server_key.reveal())
+    print_ln('First s value %s', ((user_s_values[0] + s_values[0])).reveal().legendre())
+    print_ln('Legendre symbol at first index %s', ((user_input + server_key + sint(index))).reveal().legendre())
+    print_ln('Legendre symbol at first index %s', ((user_input[0] + server_key[0] + sint(index))).reveal().legendre())
+    if eval_len > 1:
+        print_ln('Legendre symbol at first index %s %s', user_input[1].reveal(), ((user_input[1] + server_key[1] + sint(index))).reveal().legendre())
+
+    print_ln('Legendre symbol at first index w/o sinting it %s', ((user_input + server_key + index)).reveal().legendre())
+    print_ln('Leg symbol with s^2 %s', ((user_s_values[0] + s_values[0]) * (user_s_values[0] + s_values[0]) * (user_input + server_key + index)).reveal().legendre())
+
+    print_ln('Leg symbol if just multiply with s %s', ((user_s_values[0] + s_values[0]) * (user_input + server_key + index)).reveal().legendre())
+
+res = LegOPRF.compute_symbols(user_input, user_s_values, output_masks, s_values, server_key) 
+for i in range(eval_len):
+    if debug:
+        print_ln('Result %s', (res[i] - revealed_masks[i]).legendre())
+    (res[i] - revealed_masks[i]).legendre().binary_output() #Output to file.
