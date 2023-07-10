@@ -1,3 +1,17 @@
+# Legendre OPRF
+Implementation of the Legendre OPRF scheme using the MP-SPDZ library.
+## Benchmarking:
+To run the benchmarks of the Legendre OPRF, a helper file is provided. Steps to run:
+1. Install requirements for MP-SPDZ (see below - for Ubuntu: ```sudo apt install automake build-essential clang cmake git libboost-dev libboost-thread-dev libgmp-dev libntl-dev libsodium-dev libssl-dev libtool python3```)
+2. Run setup `make setup`
+3. Run `make -j 8 online`
+2. Run benchmark file with desired arguments, for example `python3 legendre_oprf_benchmark.py 1 321`
+## Modifications from MP-SPDZ:
+This repository is identical to the MP-SPDZ repository. The onyl changes being:
+- Update with the above sections of readme
+- Addition of [Benchmarking script](./legendre_oprf_benchmark.py) 
+- Addition of [Legendre OPRF](./Programs/Source/oprf_leg.mpc) and [Legendre OPRF with more preprocessing](./oprf_leg_improved.mpc) program source files.
+
 # Multi-Protocol SPDZ [![Documentation Status](https://readthedocs.org/projects/mp-spdz/badge/?version=latest)](https://mp-spdz.readthedocs.io/en/latest/?badge=latest) [![Build Status](https://dev.azure.com/data61/MP-SPDZ/_apis/build/status/data61.MP-SPDZ?branchName=master)](https://dev.azure.com/data61/MP-SPDZ/_build/latest?definitionId=7&branchName=master) [![Gitter](https://badges.gitter.im/MP-SPDZ/community.svg)](https://gitter.im/MP-SPDZ/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 This is a software to benchmark various secure multi-party computation

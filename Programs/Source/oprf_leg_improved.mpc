@@ -1,0 +1,58 @@
+from Compiler import instructions_base
+import sys
+
+program.set_security(64) #Statistical security parameter.
+
+nparallel = int(sys.argv[2])
+eval_len = int(sys.argv[3])
+
+debug = False
+
+if debug:
+    print_ln("Getting indexes")
+indexes = [public_input() for _ in range(eval_len)]
+if debug:
+    print_ln("Got Indexes")
+
+
+
+instructions_base.set_global_vector_size(nparallel)
+
+#This reads nparallel keys. But that's just a limitation of this library. If do the read and then set nparallel it'll use an extra round.
+server_key = sint.get_input_from(1)
+
+
+class LegOPRF(object):
+    def __init__(self, bit_len, indexes):
+        self.prf_bit_len = bit_len
+        self.indexes = indexes
+        self.s_arr = VectorArray(bit_len, sint, nparallel)
+        for i in range(bit_len):
+            s,ssq = sint.get_random_square()
+            self.s_arr[i] = ssq
+
+
+    def compute_symbols(self, m, k):
+        """ Takes as input [m] (H(x)), [k] returns c """
+        prf_out = self.legendre_prf(m, k)
+        # Reveal the output to party 0 (the user)
+        res = [(prf_out[i]).reveal_to(0)  for i in range(len(prf_out))]
+        return res
+
+    def legendre_prf(self, msg, k):
+        output_len = self.prf_bit_len
+        res = [self.s_arr[i] * (k + msg + self.indexes[i]) for i in range(output_len)]
+        return res
+
+
+LegOPRF = LegOPRF(eval_len, indexes)
+
+#Read user input
+user_input = sint.get_input_from(0)
+
+res = LegOPRF.compute_symbols(user_input, server_key) 
+
+for i in range(eval_len):
+    if debug:
+        print_ln('Result %s', (res[i])._v.legendre())
+    (res[i])._v.legendre().binary_output() #Output to file.
