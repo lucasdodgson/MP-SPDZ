@@ -8,7 +8,7 @@ from sympy.ntheory import primefactors
 
 
 
-full_benchmark = False #If should run full benchmark suite or just a single evaluation. Note: If running full benchmark please make sure to set nparallel to be equal to or greater than 100, otherwise not enough inputs will be generated. 
+full_benchmark = True #If should run full benchmark suite or just a single evaluation. Note: If running full benchmark please make sure to set nparallel to be equal to or greater than 100, otherwise not enough inputs will be generated. 
 online_phase_benchmark = False #If benchmark should include time used for preprocessing or consider only the online phase. 
 
 protocol = "mascot" #MPC protocol to use in evaluation 
@@ -51,7 +51,7 @@ def parse_args():
         improved = True 
     
     print(sys.argv)
-    print("Running with:", version, prime.bit_length(), "Evaluation length:", eval_len, 'order',)
+    print("Running with:", version, prime.bit_length(), "Evaluation length:", eval_len, 'order', order)
     return nparallel, eval_len, prime, version, improved, order
 
 def generate_input(prime, eval_len, nparallel, improved, order):
@@ -109,10 +109,10 @@ def run_protocol(full_benchmark, version, nparallel, protocol, prime, order, gen
             repeat = 1
             if online_phase_benchmark:
                 # Batch size has no effect for the online phase, so there is no point in using various values for it in that case
-                batch_size_arr = [1000]
+                batch_size_arr = [645]
         else:
             nparallel_arr = [nparallel]
-            batch_size_arr = [1000]
+            batch_size_arr = [645]
             repeat = 1
         #Output file to log experiment runs 
         output_file = open(f"output_{version}_{eval_len}_{protocol}_{order}.csv", 'w')
@@ -214,17 +214,20 @@ def verify_results(eval_len, nparallel, user_input, server_k, indexes, prime, or
         a = f.read()
         current_value = 0
         index = 1
-        for i in range(0,len(a),8):
-            # This implementation, outputs power/order many values for each item and the actual symbol is the index of these that contains value 1.
-            res = int.from_bytes(a[i:i+8],'little')
-            if res == 1:
-                current_value = index 
-            index += 1
-            if index > order:
-                results.append(current_value)
-                index = 1 
-                if debug:  
-                    print(current_value)
+        for offset in range(0,nparallel):
+            for i in range(offset * 8,len(a),8 * nparallel):
+                # This implementation, outputs power/order many values for each item and the actual symbol is the index of these that contains value 1.
+                res = int.from_bytes(a[i:i+8],'little')
+                if res == 1 and current_value == 0:
+                    print(index)
+                    current_value = index 
+                index += 1
+                if index > order:
+                    results.append(current_value)
+                    index = 1 
+                    current_value = 0
+                    if debug:  
+                        print(current_value)
 
     # Locally compute expected output 
     for i in range(eval_len):
@@ -233,9 +236,8 @@ def verify_results(eval_len, nparallel, user_input, server_k, indexes, prime, or
             res = (user_x + server_k + indexes[i])
             output = compute_residual(res, prime, generator, order)
             if debug:
-                print(j+i*nparallel, user_x, server_k, res, output)
-            
-            if results[j+i*nparallel] != output:
+                print(i+j*eval_len, user_x, server_k, res, output, results)
+            if results[i+j*eval_len] != output:
                 # Compare the two output values and ensure they are equal.
                 raise Exception(f"Verifying results failed! Something went wrong {results[j+i*nparallel]} {output}")
     print("Test passed")
