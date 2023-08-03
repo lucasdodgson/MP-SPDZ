@@ -76,7 +76,7 @@ def generate_input(prime, eval_len, nparallel, improved):
 
     server_k = int(server_input[0])
     
-    #Another (slight) limitation of the library, is that for our custom output-masking implementation it's easiest if we specify those also as "public inputs". Observe though, that there is no point in time in which the server will need those. An alternative would be for us to output the masked values from the script that runs in Mascot and then have our "checker" compute the Legendre Symbols.
+    #Another (slight) limitation of the library, is that for our custom output-masking implementation it's easiest if we specify those also as "public inputs". Observe though, that there is no point in time in which the server will need those. An alternative would be for us to output the masked values from the script that runs in Mascot and then have our "checker" compute the Legendre Symbols. This approach doesn't direclty work though, since the library only supports outputting 64-bit elements.
     str_masks = user_input[nparallel + eval_len * nparallel:]
     with open(f"Programs/Public-Input/{version}-{nparallel}-{eval_len}","a", encoding='utf-8') as f:
         f.write(" ".join(str_masks) + "\n")
@@ -96,19 +96,21 @@ def run_protocol(full_benchmark, version, nparallel, protocol, prime, online_pha
             batch_size_arr = [65, 185, 325, 645, 1285, 3250, 6500]
             repeat = 100
             if online_phase_benchmark:
+                # Batch size has no effect for the online phase, so there is no point in using various values for it in that case
                 batch_size_arr = [1000]
         else:
             nparallel_arr = [nparallel]
-            batch_size_arr = [325]
+            batch_size_arr = [1000]
             repeat = 1
         #Output file to log experiment runs 
-        output_file = open(f"output_{version}_{eval_len}.csv", 'w')
-        output_file.write(f'Number Parallel, Batch Size, Numer Rounds, Amount of Data, Time in seconds\n')
+        output_file = open(f"output_{version}_{eval_len}_{protocol}.csv", 'w')
+        output_file.write(f'Number Parallel,Batch Size,Numer Rounds,Amount of Data,Time in seconds\n')
         
-        #Make offline functionality for protocol. This is used to run the offline phase seperately from the online phase. Only a few protocol suties in MP-SPDZ support this, but Mascot is one of them.
+        #Make offline and online functionality for protocol. The offline phase is used to run the offline phase seperately from the online phase. Only a few protocol suties in MP-SPDZ support this, but Mascot is one of them.
         os.system(f"make {protocol}-offline.x")
         os.system(f"make -j8 {protocol}-party.x")
 
+        npar = nparallel
         #Run protocol for all batch sizes and number of parallel executions we are considering 
         for nparallel in nparallel_arr:
             for batch_size in batch_size_arr:
@@ -119,17 +121,24 @@ def run_protocol(full_benchmark, version, nparallel, protocol, prime, online_pha
                 #Compile the program        
                 os.system(f"./compile.py {version} {nparallel} {eval_len}  -O -D -P {prime}")
 
+                #Make sure public-input file exists for this exact configuration.
+                os.system(f'cp Programs/Public-Input/{version}-{npar}-{eval_len}-{order}-{generator} Programs/Public-Input/{version}-{nparallel}-{eval_len}-{order}-{generator}')
+
                 #Run repeat many repetitions
                 for _ in range(repeat):
                     # Run offline phase to prepare data 
                     offline_run_command = f"./{protocol}-offline.x  {version}-{nparallel}-{eval_len} -P {prime} -S {statistical_securtiy}" 
                     os.system(f"{offline_run_command} -p 0 & {offline_run_command} -p 1")
 
-                    # This lets us specify if we want to perform the preprocessing live or use the above generated values. 
+                    # This lets us specify if we want to perform the preprocessing live or use the above generated values. -F says to use preprocessing data saved to a file, so if -F is specified we skip the offline phase.
                     additional = "" 
                     if online_phase_benchmark:
                         additional = "-F"
-                    resp = os.popen(f"Scripts/{protocol}.sh {version}-{nparallel}-{eval_len} --direct -b {batch_size} -P {prime} -S {statistical_securtiy} {additional}").read()                    # Read output to extract rounds, mb sent and time required.
+
+                    # Run the protocol and then parse the output to extract the rounds, mb sent and time required.
+                    resp = os.popen(f"Scripts/{protocol}.sh {version}-{nparallel}-{eval_len} --direct -b {batch_size} -P {prime} -S {statistical_securtiy} {additional}").read()
+                    if debug:
+                        print(resp)
                     rounds = 0
                     mb_sent = 0.0
                     mb_total = 0.0
@@ -150,10 +159,11 @@ def run_protocol(full_benchmark, version, nparallel, protocol, prime, online_pha
                         print("no time:", resp)
                     all_mb_sent.append(mb_sent)
                     all_mb_total.append(mb_total)
-                    print(batch_size,nparallel, all_times, flush=True)
+                    print(batch_size, nparallel, rounds, all_times, flush=True)
                 print("Finished experiment run", flush=True)
                 print(all_mb_sent, all_mb_total, all_times, flush=True)
                 try:
+                    # Log output and write benchmark results to a file.
                     print(f"Prime {prime}. Run with {nparallel} parallel evaluations, ran {len(all_mb_sent)} many repetitions. Used batch size of {batch_size}. It took {rounds} many rounds, total data sent is {fmean(all_mb_total)}+-{sem(all_mb_total)} MB, and data sent by party one is {fmean(all_mb_sent)}+-{sem(all_mb_sent)} MB. Execution took {fmean(all_times)}+-{sem(all_times)} seconds ", flush = True)
                     output_file.write(f'{nparallel},{batch_size},{rounds},{fmean(all_mb_total)}+-{sem(all_mb_total)},{fmean(all_times)}+-{sem(all_times)}\n')
                 except:
