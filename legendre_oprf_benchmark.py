@@ -95,6 +95,8 @@ def run_protocol(full_benchmark, version, nparallel, protocol, prime, online_pha
             nparallel_arr = [1,10]
             batch_size_arr = [65, 185, 325, 645, 1285, 3250, 6500]#, 13000, 19000, 30000]
             repeat = 100
+            if online_phase_benchmark:
+                batch_size_arr = [1000]
         else:
             nparallel_arr = [nparallel]
             batch_size_arr = [325]
@@ -105,6 +107,7 @@ def run_protocol(full_benchmark, version, nparallel, protocol, prime, online_pha
         
         #Make offline functionality for protocol. This is used to run the offline phase seperately from the online phase. Only a few protocol suties in MP-SPDZ support this, but Mascot is one of them.
         os.system(f"make {protocol}-offline.x")
+        os.system(f"make -j8 {protocol}-party.x")
 
         #Run protocol for all batch sizes and number of parallel executions we are considering 
         for nparallel in nparallel_arr:
@@ -123,11 +126,10 @@ def run_protocol(full_benchmark, version, nparallel, protocol, prime, online_pha
                     os.system(f"{offline_run_command} -p 0 & {offline_run_command} -p 1")
 
                     # This lets us specify if we want to perform the preprocessing live or use the above generated values. 
-                    additional = " --live-preprocessing" 
+                    additional = "" 
                     if online_phase_benchmark:
-                        additional = ""
-                    resp = os.popen(f"Scripts/run-online.sh {version}-{nparallel}-{eval_len} --direct -b {batch_size} -P {prime} -S {statistical_securtiy} {additional}").read()
-                    # Read output to extract rounds, mb sent and time required.
+                        additional = "-F"
+                    resp = os.popen(f"Scripts/{protocol}.sh {version}-{nparallel}-{eval_len} --direct -b {batch_size} -P {prime} -S {statistical_securtiy} {additional}").read()                    # Read output to extract rounds, mb sent and time required.
                     rounds = 0
                     mb_sent = 0.0
                     mb_total = 0.0
