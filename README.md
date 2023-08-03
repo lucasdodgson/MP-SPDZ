@@ -1,8 +1,9 @@
 # Legendre OPRF
 Implementation of the Legendre OPRF scheme using the MP-SPDZ library.
+    
 ## Benchmarking:
 To run the benchmarks of the Legendre OPRF, a helper file is provided. Steps to run:
-1. Install requirements for MP-SPDZ (see below - for Ubuntu: ```sudo apt install automake build-essential clang cmake git libboost-dev libboost-thread-dev libgmp-dev libntl-dev libsodium-dev libssl-dev libtool python3```)
+1. Install requirements for MP-SPDZ (see below - for Ubuntu: ```sudo apt install automake build-essential clang cmake git libboost-dev libboost-thread-dev libgmp-dev libntl-dev libsodium-dev libssl-dev libtool python3 python3-pip```), then install scipy python package `pip3 install scipy`
 2. Run setup `make setup`
 3. Run `make -j 8 online`
 2. Run benchmark file with desired arguments, for example `python3 legendre_oprf_benchmark.py 1 128` to run it with 1 parallel evaluations and a 128-bit prime.

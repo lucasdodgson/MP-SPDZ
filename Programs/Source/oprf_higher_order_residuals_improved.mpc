@@ -1,11 +1,14 @@
 from Compiler import instructions_base
 import sys
-
+from sympy.ntheory import primefactors
+import random 
+import math
 program.set_security(64) #Statistical security parameter.
 
 nparallel = int(sys.argv[2])
 eval_len = int(sys.argv[3])
-
+order = int(sys.argv[4])
+prime = program.prime
 debug = False
 
 if debug:
@@ -14,22 +17,36 @@ indexes = [public_input() for _ in range(eval_len)]
 if debug:
     print_ln("Got Indexes")
 
-print_ln(program.prime)
+generator = int(sys.argv[5])#Get the generate we will use to comptue the higher order residuals
+
+def compute_residual(value, power, generator, prime):
+    outputs = []
+    for out in range(1,power+1):
+        #Check if value/g^i = h^k orequivalently if (value/g^i)^((p-1)/k) = 1
+        divisor = pow(generator, -out, prime)
+        outputs.append((value * divisor) ** ((prime-1)//power))
+    return outputs
+
+if prime % order != 1:
+    raise Exception("Invalid prime for this order!")
+
 
 instructions_base.set_global_vector_size(nparallel)
 
 #This reads nparallel keys. But that's just a limitation of this library. If do the read and then set nparallel it'll use an extra round.
 server_key = sint.get_input_from(1)
 
-
-class LegOPRF(object):
+class LegHigherOrderOPRF(object):
     def __init__(self, bit_len, indexes):
         self.prf_bit_len = bit_len
         self.indexes = indexes
         self.s_arr = VectorArray(bit_len, sint, nparallel)
         for i in range(bit_len):
             s,ssq = sint.get_random_square()
-            self.s_arr[i] = ssq
+            base = ssq**(order//2)
+            if order % 2 == 1:
+                base *= s 
+            self.s_arr[i] = base
 
 
     def compute_symbols(self, m, k):
@@ -45,14 +62,24 @@ class LegOPRF(object):
         return res
 
 
-LegOPRF = LegOPRF(eval_len, indexes)
+HigherOrderOPRF = LegHigherOrderOPRF(eval_len, indexes)
 
 #Read user input
 user_input = sint.get_input_from(0)
 
-res = LegOPRF.compute_symbols(user_input, server_key) 
+res = HigherOrderOPRF.compute_symbols(user_input, server_key) 
+
+
+    
 
 for i in range(eval_len):
-    if debug:
-        print_ln('Result %s', (res[i])._v.legendre())
-    (res[i])._v.legendre().binary_output() #Output to file.
+    results = compute_residual(res[i]._v, order, generator, prime)
+    print_ln('Next entry:')
+    index = 1
+    for j in results:
+        #This outptus all the order many residuals, from which then the corresponding one can be recovered
+        if debug:
+            print_ln('Result %s %s', index, j)
+        j.binary_output() #Output to file
+
+        index += 1
