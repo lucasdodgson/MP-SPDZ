@@ -5,7 +5,7 @@ To run the benchmarks of the Legendre OPRF, a helper file is provided. Steps to 
 1. Install requirements for MP-SPDZ (see below - for Ubuntu: ```sudo apt install automake build-essential clang cmake git libboost-dev libboost-thread-dev libgmp-dev libntl-dev libsodium-dev libssl-dev libtool python3```)
 2. Run setup `make setup`
 3. Run `make -j 8 online`
-2. Run benchmark file with desired arguments, for example `python3 legendre_oprf_benchmark.py 1 321`
+2. Run benchmark file with desired arguments, for example `python3 legendre_oprf_benchmark.py 1 128` to run it with 1 parallel evaluations and a 128-bit prime.
 ## Modifications from MP-SPDZ:
 This repository is identical to the MP-SPDZ repository. The onyl changes being:
 - Update with the above sections of readme
