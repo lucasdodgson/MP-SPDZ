@@ -7,8 +7,8 @@ from statistics import fmean
 
 
 
-full_benchmark = True #If should run full benchmark suite or just a single evaluation. Note: If running full benchmark please make sure to set nparallel to be equal to or greater than 100, otherwise not enough inputs will be generated. 
-online_phase_benchmark = False #If benchmark should include time used for preprocessing or consider only the online phase. 
+full_benchmark = False #If should run full benchmark suite or just a single evaluation. Note: If running full benchmark please make sure to set nparallel to be equal to or greater than 100, otherwise not enough inputs will be generated. 
+online_phase_benchmark = True #If benchmark should include time used for preprocessing or consider only the online phase. 
 
 protocol = "mascot" #MPC protocol to use in evaluation 
 debug = False 
@@ -122,7 +122,7 @@ def run_protocol(full_benchmark, version, nparallel, protocol, prime, online_pha
                 os.system(f"./compile.py {version} {nparallel} {eval_len}  -O -D -P {prime}")
 
                 #Make sure public-input file exists for this exact configuration.
-                os.system(f'cp Programs/Public-Input/{version}-{npar}-{eval_len}-{order}-{generator} Programs/Public-Input/{version}-{nparallel}-{eval_len}-{order}-{generator}')
+                os.system(f'cp Programs/Public-Input/{version}-{npar}-{eval_len} Programs/Public-Input/{version}-{nparallel}-{eval_len}')
 
                 #Run repeat many repetitions
                 for _ in range(repeat):
