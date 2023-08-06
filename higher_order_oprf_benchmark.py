@@ -105,7 +105,7 @@ def run_protocol(full_benchmark, version, nparallel, protocol, prime, order, gen
     else:
         if full_benchmark:
             nparallel_arr = [1,10]
-            batch_size_arr = [65, 185, 325, 645, 1285, 3250, 6500]
+            batch_size_arr = [50, 65, 75, 100, 150, 185, 200, 250, 300, 325, 350, 450, 600, 645, 750, 1000, 1285]
             repeat = 1
             if online_phase_benchmark:
                 # Batch size has no effect for the online phase, so there is no point in using various values for it in that case
