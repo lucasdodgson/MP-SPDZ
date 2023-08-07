@@ -8,11 +8,13 @@ from sympy.ntheory import primefactors
 
 
 
-full_benchmark = False #If should run full benchmark suite or just a single evaluation. Note: If running full benchmark please make sure to set nparallel to be equal to or greater than 100, otherwise not enough inputs will be generated. 
+full_benchmark = True #If should run full benchmark suite or just a single evaluation. Note: If running full benchmark please make sure to set nparallel to be equal to or greater than 100, otherwise not enough inputs will be generated. 
 online_phase_benchmark = False #If benchmark should include time used for preprocessing or consider only the online phase. 
 
 protocol = "mascot" #MPC protocol to use in evaluation 
 debug = False 
+
+
 statistical_securtiy = 64
 
 
@@ -49,7 +51,7 @@ def parse_args():
         improved = True 
     
     print(sys.argv)
-    print("Running with:", version, prime.bit_length(), "Evaluation length:", eval_len, 'order',)
+    print("Running with:", version, prime.bit_length(), "Evaluation length:", eval_len, 'order', order)
     return nparallel, eval_len, prime, version, improved, order
 
 def generate_input(prime, eval_len, nparallel, improved, order):
@@ -74,10 +76,10 @@ def generate_input(prime, eval_len, nparallel, improved, order):
     with open(f"Programs/Public-Input/{version}-{nparallel}-{eval_len}-{order}-{generator}","w", encoding='utf-8') as f:
         str_indexes = [str(i) for i in indexes]
         f.write(" ".join(str_indexes) + " \n ")
-    os.system(f'cp Programs/Public-Input/{version}-{nparallel}-{eval_len}-{order}-{generator} Programs/Public-Input/{version}-1-{eval_len}-{order}-{generator}')
-    os.system(f'cp Programs/Public-Input/{version}-{nparallel}-{eval_len}-{order}-{generator} Programs/Public-Input/{version}-10-{eval_len}-{order}-{generator}')
+
     with open("Player-Data/Input-P0-0","w", encoding='utf-8') as f:
         f.write(" ".join(user_input) + " \n ")
+
     with open("Player-Data/Input-P1-0","w", encoding='utf-8') as f:
         for i in range(nparallel-1): #To read a nparallel vector all containing the same key, need to write it nparallel times to the file.
             f.write(f"{server_input[0]} ")
@@ -85,7 +87,8 @@ def generate_input(prime, eval_len, nparallel, improved, order):
 
     server_k = int(server_input[0])
     
-    #Another (slight) limitation of the library, is that for our custom output-masking implementation it's easiest if we specify those also as "public inputs". Observe though, that there is no point in time in which the server will need those. An alternative would be for us to output the masked values from the script that runs in Mascot and then have our "checker" compute the Legendre Symbols.
+    #Another (slight) limitation of the library, is that for our custom output-masking implementation it's easiest if we specify those also as "public inputs". Observe though, that there is no point in time in which the server will need those. An alternative would be for us to output the masked values from the script that runs in Mascot and then have our "checker" compute the Legendre Symbols. This approach doesn't direclty work though, since the library only supports outputting 64-bit elements.
+
     str_masks = user_input[nparallel + eval_len * nparallel:]
     with open(f"Programs/Public-Input/{version}-{nparallel}-{eval_len}-{order}-{generator}","a", encoding='utf-8') as f:
         f.write(" ".join(str_masks) + "\n")
@@ -102,20 +105,24 @@ def run_protocol(full_benchmark, version, nparallel, protocol, prime, order, gen
     else:
         if full_benchmark:
             nparallel_arr = [1,10]
-            batch_size_arr = [65, 185, 325, 645, 1285, 3250, 6500]#, 13000, 19000, 30000]
-            repeat = 100
+            batch_size_arr = [65, 185, 325, 645, 1285, 3250, 6500]
+            repeat = 1
+            if online_phase_benchmark:
+                # Batch size has no effect for the online phase, so there is no point in using various values for it in that case
+                batch_size_arr = [645]
         else:
             nparallel_arr = [nparallel]
-            batch_size_arr = [325]
+            batch_size_arr = [645]
             repeat = 1
         #Output file to log experiment runs 
-        output_file = open(f"output_{version}_{eval_len}.csv", 'w')
-        output_file.write(f'Number Parallel, Batch Size, Numer Rounds, Amount of Data, Time in seconds\n')
+        output_file = open(f"output_{version}_{eval_len}_{protocol}_{order}.csv", 'w')
+        output_file.write(f'Number Parallel,Batch Size,Numer Rounds,Amount of Data,Time in seconds\n')
         
-        #Make offline functionality for protocol. This is used to run the offline phase seperately from the online phase. Only a few protocol suties in MP-SPDZ support this, but Mascot is one of them.
+        #Make offline and online functionality for protocol. The offline phase is used to run the offline phase seperately from the online phase. Only a few protocol suties in MP-SPDZ support this, but Mascot is one of them.
         os.system(f"make {protocol}-offline.x")
         os.system(f"make -j8 {protocol}-party.x")
 
+        npar = nparallel
         #Run protocol for all batch sizes and number of parallel executions we are considering 
         for nparallel in nparallel_arr:
             for batch_size in batch_size_arr:
@@ -126,20 +133,24 @@ def run_protocol(full_benchmark, version, nparallel, protocol, prime, order, gen
                 #Compile the program 
                 os.system(f"./compile.py {version} {nparallel} {eval_len} {order}  {generator} -O -D -P {prime}")
 
+                #Make sure public-input file exists for this exact configuration.
+                os.system(f'cp Programs/Public-Input/{version}-{npar}-{eval_len}-{order}-{generator} Programs/Public-Input/{version}-{nparallel}-{eval_len}-{order}-{generator}')
+
                 #Run repeat many repetitions
                 for _ in range(repeat):
                     # Run offline phase to prepare data 
                     offline_run_command = f"./{protocol}-offline.x  {version}-{nparallel}-{eval_len}-{order}-{generator} -P {prime} -S {statistical_securtiy}" 
                     os.system(f"{offline_run_command} -p 0 & {offline_run_command} -p 1")
 
-                    # This lets us specify if we want to perform the preprocessing live or use the above generated values. 
+                    # This lets us specify if we want to perform the preprocessing live or use the above generated values. -F says to use preprocessing data saved to a file, so if -F is specified we skip the offline phase.
                     additional = "" 
                     if online_phase_benchmark:
                         additional = "-F"
-                    resp = os.popen(f"Scripts/{protocol}.sh {version}-{nparallel}-{eval_len}-{order}-{generator} --direct -b {batch_size} -P {prime} -S {statistical_securtiy} {additional}").read()                    # Read output to extract rounds, mb sent and time required.
+
+                    # Run the protocol and then parse the output to extract the rounds, mb sent and time required.
+                    resp = os.popen(f"Scripts/{protocol}.sh {version}-{nparallel}-{eval_len}-{order}-{generator} --direct -b {batch_size} -P {prime} -S {statistical_securtiy} {additional}").read()
                     if debug:
                         print(resp)
-                    # Read output to extract rounds, mb sent and time required.
                     rounds = 0
                     mb_sent = 0.0
                     mb_total = 0.0
@@ -160,10 +171,11 @@ def run_protocol(full_benchmark, version, nparallel, protocol, prime, order, gen
                         print("no time:", resp)
                     all_mb_sent.append(mb_sent)
                     all_mb_total.append(mb_total)
-                    print(batch_size,nparallel, all_times, flush=True)
+                    print(batch_size, nparallel, rounds, all_times, flush=True)
                 print("Finished experiment run", flush=True)
                 print(all_mb_sent, all_mb_total, all_times, flush=True)
                 try:
+                    # Log output and write benchmark results to a file.
                     print(f"Prime {prime}. Run with {nparallel} parallel evaluations, ran {len(all_mb_sent)} many repetitions. Used batch size of {batch_size}. It took {rounds} many rounds, total data sent is {fmean(all_mb_total)}+-{sem(all_mb_total)} MB, and data sent by party one is {fmean(all_mb_sent)}+-{sem(all_mb_sent)} MB. Execution took {fmean(all_times)}+-{sem(all_times)} seconds ", flush = True)
                     output_file.write(f'{nparallel},{batch_size},{rounds},{fmean(all_mb_total)}+-{sem(all_mb_total)},{fmean(all_times)}+-{sem(all_times)}\n')
                 except:
@@ -173,7 +185,7 @@ def run_protocol(full_benchmark, version, nparallel, protocol, prime, order, gen
 
 
 def find_gen(prime):
-    #Finds a generator for the group
+    """Finds a generator for the group, required since we need one for computing the higher-order residues."""
     factors = primefactors(prime-1)
     gen = 1
     while pow(gen,2,prime) == 1:
@@ -185,6 +197,7 @@ def find_gen(prime):
     return gen 
 
 def compute_residual(element, prime, generator, order):
+    """Computes the higher order residual of an element in a group."""
     for i in range(order):
         i = i + 1
         div = pow(generator,-i,prime)
@@ -194,24 +207,27 @@ def compute_residual(element, prime, generator, order):
 
 
 def verify_results(eval_len, nparallel, user_input, server_k, indexes, prime, order, generator):
-    """Verify that the computed Legendre Symbols are the correct ones"""
+    """Verify that the implementation computes the correct higher-power residue symbols"""
     
-    # Read the output binary. For the higher order symbols, we now read the order many outputted items and check which one is 1.    
     results = [] 
     with open("Player-Data/Binary-Output-P0-0",'rb') as f:
         a = f.read()
         current_value = 0
         index = 1
-        for i in range(0,len(a),8):
-            res = int.from_bytes(a[i:i+8],'little')
-            if res == 1:
-                current_value = index 
-            index += 1
-            if index > order:
-                results.append(current_value)
-                index = 1 
-                if debug:  
-                    print(current_value)
+        for offset in range(0,nparallel):
+            for i in range(offset * 8,len(a),8 * nparallel):
+                # This implementation, outputs power/order many values for each item and the actual symbol is the index of these that contains value 1.
+                res = int.from_bytes(a[i:i+8],'little')
+                if res == 1 and current_value == 0:
+                    print(index)
+                    current_value = index 
+                index += 1
+                if index > order:
+                    results.append(current_value)
+                    index = 1 
+                    current_value = 0
+                    if debug:  
+                        print(current_value)
 
     # Locally compute expected output 
     for i in range(eval_len):
@@ -220,9 +236,8 @@ def verify_results(eval_len, nparallel, user_input, server_k, indexes, prime, or
             res = (user_x + server_k + indexes[i])
             output = compute_residual(res, prime, generator, order)
             if debug:
-                print(j+i*nparallel, user_x, server_k, res, output)
-            
-            if results[j+i*nparallel] != output:
+                print(i+j*eval_len, user_x, server_k, res, output, results)
+            if results[i+j*eval_len] != output:
                 # Compare the two output values and ensure they are equal.
                 raise Exception(f"Verifying results failed! Something went wrong {results[j+i*nparallel]} {output}")
     print("Test passed")

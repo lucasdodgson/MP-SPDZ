@@ -5,13 +5,27 @@ Implementation of the Legendre OPRF scheme using the MP-SPDZ library.
 To run the benchmarks of the Legendre OPRF, a helper file is provided. Steps to run:
 1. Install requirements for MP-SPDZ (see below - for Ubuntu: ```sudo apt install automake build-essential clang cmake git libboost-dev libboost-thread-dev libgmp-dev libntl-dev libsodium-dev libssl-dev libtool python3 python3-pip```), then install scipy python package `pip3 install scipy`
 2. Run setup `make setup`
-3. Run `make -j 8 online`
-2. Run benchmark file with desired arguments, for example `python3 legendre_oprf_benchmark.py 1 128` to run it with 1 parallel evaluations and a 128-bit prime.
+3. Run benchmark file with desired arguments, for example `python3 legendre_oprf_benchmark.py 1 128` to run it with 1 parallel evaluations and a 128-bit prime. If there is a third system argument, then the variant with further preprocessing will be used. Currently supported prime sizes are only 128-bit or 256-bit.
+
+To modify what exactly is being run, the first few lines of the corresponding file can be modified. For example `online_phase_benchmark` can be set to True if only the online phase should be benchmarked. The protocol can be changed between various options (such as Mascot, semi, or hemi), and it can be specified if the full benchmark-suite should be run or just a single evaluation.
+
+--- 
+For higher order variant, most of the process remains the same. Now though, to run the benchmarks one should run `python3 legendre_oprf_benchmark.py 1 128 k` where `k` describes what power-residue one should use (`k=2` corresponds to the Legendre OPRF for example). The rest works analogously, now requiring a fourth argument in case further-preprocessing should be used.
 ## Modifications from MP-SPDZ:
 This repository is identical to the MP-SPDZ repository. The onyl changes being:
 - Update with the above sections of readme
 - Addition of [Benchmarking script](./legendre_oprf_benchmark.py) 
 - Addition of [Legendre OPRF](./Programs/Source/oprf_leg.mpc) and [Legendre OPRF with more preprocessing](./oprf_leg_improved.mpc) program source files.
+
+Furthermore, the following files have been added for the higher order residuals:
+- Addition of [Higher Order Benchmarking script](./higher_order_oprf_benchmark.py) 
+- Addition of [Higher order OPRF](./Programs/Source/oprf_higher_order_residuals.mpc) and [Higher order OPRF with more preprocessing](./oprf_higher_order_residuals_improved.mpc) program source files.
+
+---
+---
+---
+
+# **README of MP-SPDZ library on which this Repo is based:**
 
 # Multi-Protocol SPDZ [![Documentation Status](https://readthedocs.org/projects/mp-spdz/badge/?version=latest)](https://mp-spdz.readthedocs.io/en/latest/?badge=latest) [![Build Status](https://dev.azure.com/data61/MP-SPDZ/_apis/build/status/data61.MP-SPDZ?branchName=master)](https://dev.azure.com/data61/MP-SPDZ/_build/latest?definitionId=7&branchName=master) [![Gitter](https://badges.gitter.im/MP-SPDZ/community.svg)](https://gitter.im/MP-SPDZ/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
