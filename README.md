@@ -5,19 +5,26 @@ Implementation of the Legendre OPRF scheme using the MP-SPDZ library.
 To run the benchmarks of the Legendre OPRF, a helper file is provided. Steps to run:
 1. Install requirements for MP-SPDZ (see below - for Ubuntu: ```sudo apt install automake build-essential clang cmake git libboost-dev libboost-thread-dev libgmp-dev libntl-dev libsodium-dev libssl-dev libtool python3 python3-pip```), then install scipy python package `pip3 install scipy sympy`
 2. Run setup `make setup`
-3. Run benchmark file with desired arguments, for example `python3 legendre_oprf_benchmark.py 1 128` to run it with 1 parallel evaluations and a 128-bit prime. If there is a third system argument, then the variant with further preprocessing will be used. Currently supported prime sizes are only 128-bit or 256-bit.
+3. Optionally, set network delay nad rate limit to reproduce timing results `sudo tc qdisc add dev lo root netem delay 100ms rate 50mbit`
+4. Run benchmark file with desired arguments, for example `python3 legendre_oprf_benchmark.py 1 128` to run it with 1 parallel evaluations and a 128-bit prime. 
 
-To modify what exactly is being run, the first few lines of the corresponding file can be modified. For example `online_phase_benchmark` can be set to True if only the online phase should be benchmarked. The protocol can be changed between various options (such as Mascot, semi, or hemi), and it can be specified if the full benchmark-suite should be run or just a single evaluation. The benchmark script also runs a test to verify that the correct value is being computed at the end.
+The benchmark script works as follows, it compiles the program and generates the inputs. It then runs it and verifies the inputs, while recording the performance of the scheme. There are a few ways to modify the way the benchmark script runs. In particukar:
+- Adding a third system argument will cause the variant of the scheme with further preprocessing to be used.
+- Changing the 128 to 256 allows using a 256-bit prime. Currently those two are the only supported options. 
+- Lines 10 and 11 of [the file](./legendre_oprf_benchmark.py) allow specifying if a full benchmark should be run and if only the online-phase should be benchmarked, or the offline phase be included in the results. A full-benchmark will run 100 repetitions of each configuration to get a better timinig estimate, and run through a series of preprocessing batch sizes.
+- Line [13](./legendre_oprf_benchmark.py) allows specifying alternative MPC protocols, for example semi or hemi.   
 
 --- 
-For higher order variant, most of the process remains the same. Now though, to run the benchmarks one should run `python3 legendre_oprf_benchmark.py 1 128 k` where `k` describes what power-residue one should use (`k=2` corresponds to the Legendre OPRF for example). The rest works analogously, now requiring a fourth argument in case further-preprocessing should be used.
+## Higher-power residuals
+For the higher-power residuals, the process is very similar. To run the protocol and generate input, one can run `python3 higher_order_oprf_benchmark.py 1 128 a` where `a` describes what power-residue one should use (`a=2` corresponds to the Legendre OPRF for example). The rest works analogously, now requiring a fourth argument in case further-preprocessing should be used.
+
 ## Modifications from MP-SPDZ:
 This repository is identical to the MP-SPDZ repository. The onyl changes being:
 - Update with the above sections of readme
 - Addition of [Benchmarking script](./legendre_oprf_benchmark.py) 
 - Addition of [Legendre OPRF](./Programs/Source/oprf_leg.mpc) and [Legendre OPRF with more preprocessing](./oprf_leg_improved.mpc) program source files.
 
-Furthermore, the following files have been added for the higher order residuals:
+Furthermore, the following files have been added for the higher-power residue implementation:
 - Addition of [Higher Order Benchmarking script](./higher_order_oprf_benchmark.py) 
 - Addition of [Higher order OPRF](./Programs/Source/oprf_higher_order_residuals.mpc) and [Higher order OPRF with more preprocessing](./oprf_higher_order_residuals_improved.mpc) program source files.
 

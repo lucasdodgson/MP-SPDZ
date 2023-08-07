@@ -7,10 +7,10 @@ from statistics import fmean
 
 
 
-full_benchmark = True #If should run full benchmark suite or just a single evaluation. Note: If running full benchmark please make sure to set nparallel to be equal to or greater than 100, otherwise not enough inputs will be generated. 
-online_phase_benchmark = True #If benchmark should include time used for preprocessing or consider only the online phase. 
+full_benchmark = False #If should run full benchmark suite or just a single evaluation. Note: If running full benchmark please make sure to set nparallel to be equal to or greater than 100, otherwise not enough inputs will be generated. 
+online_phase_benchmark = False #If benchmark should include time used for preprocessing or consider only the online phase. 
 
-protocol = "semi" #MPC protocol to use in evaluation 
+protocol = "mascot" #MPC protocol to use in evaluation 
 debug = False 
 statistical_securtiy = 64
 
