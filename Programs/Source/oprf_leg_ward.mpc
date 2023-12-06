@@ -48,9 +48,7 @@ def _():
 
 
 # read offsets
-I = Array(ell, sint)
-for i in range(ell):
-    I[i] = public_input()
+I = [public_input() for _ in range(ell)]
 
 Alpha = [ public_input() for _ in range(ell_com) ]
 
