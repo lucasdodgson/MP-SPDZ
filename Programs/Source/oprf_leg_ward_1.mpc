@@ -1,0 +1,41 @@
+from Compiler import instructions_base
+import sys
+
+program.set_security(64) #Statistical security parameter.
+
+ell_com  = int(sys.argv[2])
+ell_eval = int(sys.argv[3])
+
+print("ell_com:", ell_com, "ell_eval:", ell_eval)
+
+ell = ell_com + ell_eval
+
+program.bit_length = 128
+
+# server inputs (i.e. commits to) coefficients of a polynomial f(x) = a0 + a1*x + ... a_ell * x^ell
+# and to the coefficients of g(x) = f^2(x) = b0 + b1*x + ... + b_{2 ell} x^{2 ell}
+
+a = Array(ell, sint)
+@for_range(ell)
+def f(i):
+    a[i] = sint.get_input_from(1)
+
+b = Array(2*ell - 1, sint)
+@for_range(2*ell - 1)
+def f(i):
+    b[i] = sint.get_input_from(1)
+
+# store inputs for use in the second phase of the protocol
+@for_range(ell)
+def f(i):
+    a[i].store_in_mem(i)
+
+@for_range(2*ell - 1)
+def f(i):
+    b[i].store_in_mem(ell + 1 + i)
+
+# store K and X
+sint.get_input_from(1).store_in_mem(3*ell - 1) # K
+sint.get_input_from(0).store_in_mem(3*ell) # X
+
+print_ln('End of phase 1')

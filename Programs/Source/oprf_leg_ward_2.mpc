@@ -1,0 +1,66 @@
+from Compiler import instructions_base
+import sys
+
+program.set_security(64) #Statistical security parameter.
+
+ell_com  = int(sys.argv[2])
+ell_eval = int(sys.argv[3])
+ell = ell_com + ell_eval
+
+program.bit_length = 128
+
+# Load f(0), ..., f(ell - 1) 
+# and g(0), ..., g(2ell -2 ) from memory
+
+a = Array(ell , sint)
+b = Array(2*ell - 1, sint)
+
+@for_range(ell)
+def f(i):
+    a[i].load_mem(i)
+
+@for_range(2*ell - 1)
+def f(i):
+    b[i].load_mem(ell + i)
+
+K = sint.load_mem(3*ell - 1)
+X = sint.load_mem(3*ell)
+
+print_ln('Finish loading from phase 1')
+
+r = public_input()
+
+# interpolate f(r) 
+fr = sint(0)
+for i in range(ell):
+    fr = fr + a[i]*public_input()
+
+# interpolate g(r) 
+gr = sint(0)
+for i in range(2*ell - 1):
+    gr = gr + b[i]*public_input()
+
+# Abort if f^2(r) != g(r)
+check = (fr*fr - gr).reveal()
+print_ln("check = %s", check)
+@if_e(check != 0)
+def _():
+    runtime_error("probabilistic check failed.")
+@else_
+def _():
+    print_ln("check succeeded! :)")
+
+
+# read offsets
+I = Array(ell, sint)
+@for_range(ell)
+def f(i):
+    I[i] = public_input()
+
+# compute evaluations
+Out = Array(ell, sint)
+@for_range(ell)
+def f(i):
+    Out[i] = (I[i] + K + X)*b[i]
+    print_ln_to(0, "masked output: %s", Out[i].reveal_to(0))
+    
