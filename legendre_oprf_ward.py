@@ -4,6 +4,7 @@ import sys
 import os
 from scipy.stats import sem
 from statistics import fmean
+import time
 
 #MPC protocol to use in evaluation 
 protocol = "mascot" 
@@ -31,8 +32,12 @@ def compile_programs():
 
 
 def offline_phase():
+    start_time = time.time()
     offline_run_command1 = f"./mascot-offline.x  oprf_leg_ward-{ell_com}-{ell_eval} -P {prime} -S {statistical_securtiy}" 
     os.system(f"{offline_run_command1} -p 0 & {offline_run_command1} -p 1")
+    offline_time = time.time()-start_time
+    print()
+    print(f"offline phase took {offline_time} seconds")
 
 def eval_poly(p,x):
     e = 0
